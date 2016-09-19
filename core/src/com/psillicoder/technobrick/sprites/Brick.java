@@ -10,7 +10,7 @@ import com.badlogic.gdx.math.Rectangle;
 public class Brick extends Sprite {
 
     private Rectangle rect;
-    public boolean isAlive;
+    public boolean isAlive = true;
 
     private short type;
 

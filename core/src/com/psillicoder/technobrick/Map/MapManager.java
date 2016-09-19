@@ -6,12 +6,15 @@ import com.badlogic.gdx.maps.tiled.TiledMapRenderer;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import com.psillicoder.technobrick.HUD.HUDManager;
 import com.psillicoder.technobrick.TechnoBrickGame;
 import com.psillicoder.technobrick.sprites.Brick;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -26,10 +29,13 @@ public class MapManager {
     TiledMap map1;
     TiledMapTileLayer brickLayer;
 
+    HUDManager hManager;
+
     private List<Brick> brickList = new ArrayList<Brick>();
 
-    public MapManager(TechnoBrickGame gam, OrthographicCamera cam) {
+    public MapManager(TechnoBrickGame gam, OrthographicCamera cam, HUDManager hudManager) {
         this.game = gam;
+        this.hManager = hudManager;
         camera = cam;
         map1 = new TmxMapLoader().load("level1.tmx");
         mRenderer = new OrthogonalTiledMapRenderer(map1);
@@ -39,6 +45,30 @@ public class MapManager {
 
         setupBricks();
     }
+
+    public void destroyBrick(Rectangle tBrick, int index) {
+        brickList.remove(index);
+        TiledMapTileLayer.Cell dCell = brickLayer.getCell((int)tBrick.x / 32, (int)tBrick.y / 16);
+        if (dCell != null) {
+            dCell.setTile(null);
+        }
+    }
+
+    public void bricksToDestroy() {
+        Iterator itr = brickList.iterator();
+        while (itr.hasNext()) {
+            Brick dBrick = (Brick)itr.next();
+            if (dBrick.isAlive == false) {
+                TiledMapTileLayer.Cell dCell = brickLayer.getCell((int)dBrick.getRect().x / 32,(int)dBrick.getRect().y / 16);
+                if (dCell != null) {
+                    dCell.setTile(null);
+                }
+                hManager.addScore(5);
+                itr.remove();
+            }
+        }
+    }
+
 
     public void setupBricks() {
         brickLayer =  (TiledMapTileLayer)map1.getLayers().get(1);

@@ -3,15 +3,14 @@ package com.psillicoder.technobrick.screens;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.physics.box2d.Shape;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import com.psillicoder.technobrick.HUD.HUDManager;
 import com.psillicoder.technobrick.Map.MapManager;
 import com.psillicoder.technobrick.TechnoBrickGame;
 import com.psillicoder.technobrick.sprites.Ball;
@@ -31,6 +30,7 @@ public class PlayScreen implements Screen {
     final TechnoBrickGame game;
 
     OrthographicCamera camera;
+    public HUDManager hManager;
     Viewport viewport;
     MapManager mManager;
     //Objects
@@ -51,7 +51,16 @@ public class PlayScreen implements Screen {
         camera = new OrthographicCamera();
         camera.setToOrtho(false,TechnoBrickGame.V_WIDTH, TechnoBrickGame.V_HEIGHT);
         viewport = new FitViewport(TechnoBrickGame.V_WIDTH,TechnoBrickGame.V_HEIGHT,camera);
-        mManager = new MapManager(game, camera);
+
+        //HUD Renderer
+        hManager = new HUDManager(TechnoBrickGame.V_WIDTH,TechnoBrickGame.V_HEIGHT);
+
+
+        //Map Manager
+        mManager = new MapManager(game, camera,hManager);
+
+
+        //Load components
         bricks = mManager.getBricks();
         playerBall = new Ball(100,100);
         playerPaddle = new Paddle(TechnoBrickGame.V_WIDTH / 2 - 32, 20);
@@ -82,9 +91,6 @@ public class PlayScreen implements Screen {
         ProcessInput();
         CheckCollision();
 
-
-
-
         playerBall.update(delta);
         camera.update();
     }
@@ -104,26 +110,17 @@ public class PlayScreen implements Screen {
         game.batch.begin();
         playerBall.render(game.batch);
         playerPaddle.render(game.batch);
+        hManager.render(game.batch);
         game.batch.end();
 
-        /*for (int i = 0; i < mManager.getBricks().size(); i++)  {
-            Brick tBrick = mManager.getBricks().get(i);
-            System.out.println("index: " + mManager.getBricks().size() + " x: " + tBrick.getRect().x + " y: " + tBrick.getRect().y + " width: " + tBrick.getRect().width + " height: " + tBrick.getRect().height);
-
-
-            rShape.begin(ShapeRenderer.ShapeType.Line);
-            rShape.setColor(Color.WHITE);
-            //rShape.rect(tBrick.getRect().x,tBrick.getRect().y,tBrick.getWidth(),tBrick.getHeight());
-            rShape.end();
-        }*/
-
+        //Debug lines for objects
         if (debugON) {
             ShapeRenderer rShape = new ShapeRenderer();
             camera.update();
             rShape.setProjectionMatrix(camera.combined);
             for (Brick tBrick : mManager.getBricks()) {
                 rShape.begin(ShapeRenderer.ShapeType.Line);
-                rShape.setColor(1, 1, 1, 1);
+                rShape.setColor(0, 0, 1, 1);
                 rShape.box(tBrick.getRect().x, tBrick.getRect().y, 0, tBrick.getRect().width, tBrick.getRect().height, 0);
                 System.out.println(
                         "Shape Added X: " + tBrick.getRect().x +
@@ -161,14 +158,19 @@ public class PlayScreen implements Screen {
             if (playerBall.getPos().x > fourth && playerBall.getPos().x < third + 16) {
                 playerBall.setSpeed(new Vector2(playerBall.getSpeed().x * -1, playerBall.getSpeed().y * -1));
             }
-            //playerBall.setSpeed(new Vector2(playerBall.getSpeed().x, playerBall.getSpeed().y * -1));
         }
 
         for (Brick tBrick : mManager.getBricks()) {
+            /*
+            if (tBrick.isAlive == false) {
+                mManager.destroyBrick(tBrick.getRect(),mManager.getBricks().indexOf(tBrick));
+            }
+            */
             if (playerBall.getRect().overlaps(tBrick.getRect())) {
                 System.out.println("Collision!");
                 int ballCenterX = (int)playerBall.getRect().x + (int)playerBall.getRect().getWidth() / 2;
                 int ballCenterY = (int)playerBall.getRect().y + (int)playerBall.getRect().getHeight() / 2;
+
 
                 Rectangle brickTopLeft = new Rectangle(
                         tBrick.getRect().x,
@@ -202,8 +204,12 @@ public class PlayScreen implements Screen {
                 if (playerBall.getRect().overlaps(brickTopLeft)) {
                     if (ballCenterX > brickTopLeft.x && ballCenterY > brickTopLeft.y + brickTopLeft.height) {
                         playerBall.setSpeed(new Vector2(playerBall.getSpeed().x, playerBall.getSpeed().y * -1));
+                        tBrick.isAlive = false;
+                        continue;
                     } else if (ballCenterY < brickTopLeft.y + brickTopLeft.height && ballCenterX < brickTopLeft.x) {
                         playerBall.setSpeed(new Vector2(playerBall.getSpeed().x * -1, playerBall.getSpeed().y));
+                        tBrick.isAlive = false;
+                        continue;
                     }
                 }
 
@@ -211,16 +217,24 @@ public class PlayScreen implements Screen {
                 if (playerBall.getRect().overlaps(brickTopRight)) {
                     if (ballCenterX < brickTopRight.x + brickTopRight.width && ballCenterY > brickTopRight.y + brickTopRight.height) {
                         playerBall.setSpeed(new Vector2(playerBall.getSpeed().x, playerBall.getSpeed().y * -1));
+                        tBrick.isAlive = false;
+                        continue;
                     }else if (ballCenterY < brickTopRight.y + brickTopRight.height && ballCenterX > brickTopRight.x + brickTopRight.width) {
                         playerBall.setSpeed(new Vector2(playerBall.getSpeed().x * -1, playerBall.getSpeed().y));
+                        tBrick.isAlive = false;
+                        continue;
                     }
                 }
                 //Ball collides with bottom left of brick
                 if (playerBall.getRect().overlaps(brickBottomLeft)) {
                     if (ballCenterX > brickBottomLeft.x && ballCenterY < brickBottomLeft.y) {
                         playerBall.setSpeed(new Vector2(playerBall.getSpeed().x,playerBall.getSpeed().y * -1));
+                        tBrick.isAlive = false;
+                        continue;
                     }else if (ballCenterX < brickBottomLeft.x && ballCenterY > brickBottomLeft.y) {
                         playerBall.setSpeed(new Vector2(playerBall.getSpeed().x * -1, playerBall.getSpeed().y));
+                        tBrick.isAlive = false;
+                        continue;
                     }
                 }
 
@@ -228,13 +242,19 @@ public class PlayScreen implements Screen {
                 if (playerBall.getRect().overlaps(brickBottomRight)) {
                     if (ballCenterX < brickBottomRight.x + brickBottomRight.width && ballCenterY < brickBottomRight.y) {
                         playerBall.setSpeed(new Vector2(playerBall.getSpeed().x, playerBall.getSpeed().y * - 1));
+                        tBrick.isAlive = false;
+                        continue;
                     }else if (ballCenterX > brickBottomRight.x + brickBottomRight.width && ballCenterY > brickBottomRight.y) {
                         playerBall.setSpeed(new Vector2(playerBall.getSpeed().x * -1, playerBall.getSpeed().y));
+                        tBrick.isAlive = false;
+                        continue;
                     }
                 }
 
                 }
             }
+        mManager.bricksToDestroy();
+
         }
 
 
